@@ -9,9 +9,11 @@ def price_to_sqrtp(p):
     return int(math.sqrt(p) * q96)
 
 print(price_to_tick(5000)) 
+# 85176
 print(price_to_tick(4545))
+# 84222
 print(price_to_tick(5500)) 
-
+# 86129
 
 # 85176
 

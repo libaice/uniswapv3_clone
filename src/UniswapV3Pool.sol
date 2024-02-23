@@ -33,6 +33,11 @@ contract UniswapV3Pool {
     //Position Info
     mapping(bytes32 => Position.Info) public positions;
 
+    struct CallbackData {
+        address token0;
+        address token1;
+        address payer;
+    }
 
     constructor(
         address _token0, 
@@ -52,12 +57,17 @@ contract UniswapV3Pool {
         address owner, 
         int24 lowerTick,
         int24 upperTick,
-        uint128 amount
+        uint128 amount,
+        bytes calldata data
     ) external returns(uint256 amount0, uint256 amount1) {
         if(lowerTick < MIN_TICK || upperTick > MAX_TICK || lowerTick >= upperTick) {
             revert("UniswapV3Pool: INVALID_TICK_RANGE");
         }
         if(amount == 0) revert ZeroLiquidity();
+    }
+
+    function swap(address recepient , bytes calldata data) public returns (uint256 amount0, uint256 amount1) {
+        
     }
 
 }
