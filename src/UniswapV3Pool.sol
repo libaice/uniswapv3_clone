@@ -5,6 +5,7 @@ import {Position} from "src/lib/Position.sol";
 import {IERC20} from "src/interfaces/IERC20.sol";
 import {IUniswapV3MintCallback} from "src/interfaces/IUniswapV3MintCallback.sol";
 import {IUniswapV3SwapCallback} from "src/interfaces/IUniswapV3SwapCallback.sol";
+import {TickBitmap} from "src/lib/TickBitmap.sol";
 
 error ZeroLiquidity();
 error InsufficientInputAmount();
@@ -12,6 +13,7 @@ error InvalidTickRange();
 
 contract UniswapV3Pool {
     using Tick for mapping(int24 => Tick.Info);
+    using TickBitmap for mapping(int16 => uint256);
     using Position for mapping(bytes32 => Position.Info);
     using Position for Position.Info;
 
