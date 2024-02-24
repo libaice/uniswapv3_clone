@@ -5,13 +5,15 @@ import {Test, console2} from "forge-std/Test.sol";
 
 import {ERC20Mintable} from "./ERC20Mintable.sol";
 import {UniswapV3Pool} from "src/UniswapV3Pool.sol";
-
+import {UniswapV3Manager} from "src/UniswapV3Manager.sol";
 import {IERC20} from "src/interfaces/IERC20.sol";
 import {TestUtils} from "test/TestUtils.sol";
+
 contract UniswapV3PoolTest is Test, TestUtils {
     ERC20Mintable token0;
     ERC20Mintable token1;
     UniswapV3Pool pool;
+    UniswapV3Manager manager;
 
     bool transferInMintCallback = true;
     bool transferInSwapCallback = true;
@@ -105,13 +107,83 @@ contract UniswapV3PoolTest is Test, TestUtils {
         setupTestCase(params);
 
         vm.expectRevert(encodeError("InsufficientInputAmount()"));
-        pool.mint(
-            address(this),
-            params.lowerTick,
-            params.upperTick,
-            params.liquidity,
-            ""
-        );
+        pool.mint(address(this), params.lowerTick, params.upperTick, params.liquidity, "");
+    }
+
+    function testSwapBuyEth() public {
+        TestCaseParams memory params = TestCaseParams({
+            wethBalance: 1 ether,
+            usdcBalance: 5000 ether,
+            currentTick: 85176,
+            lowerTick: 84222,
+            upperTick: 86129,
+            liquidity: 1517882343751509868544,
+            currentSqrtP: 5602277097478614198912276234240,
+            transferInMintCallback: true,
+            transferInSwapCallback: true,
+            mintLiquidity: true
+        });
+        (uint256 poolBalance0, uint256 poolBalance1) = setupTestCase(params);
+
+        uint256 swapAmount = 42 ether;
+        token1.mint(address(this), swapAmount);
+        token1.approve(address(this), swapAmount);
+
+        UniswapV3Pool.CallbackData memory extra =
+            UniswapV3Pool.CallbackData({token0: address(token0), token1: address(token1), payer: address(this)});
+
+        int256 userBalance0Before = int256(token0.balanceOf(address(this)));
+
+        (int256 amount0Delta, int256 amount1Delta) = pool.swap(address(this), abi.encode(extra));
+
+        assertEq(amount0Delta, -0.008396714242162444 ether, "invalid ETH out");
+        assertEq(amount1Delta, 42 ether, "invalid USDC in");
+
+        // user balance change
+        assertEq(token0.balanceOf(address(this)), uint256(userBalance0Before - amount0Delta), "incorrect user token0 balance");
+        assertEq(token1.balanceOf(address(this)), 0, "incorrect user token1 balance");
+
+        // pool balance change
+        assertEq(token0.balanceOf(address(pool)), uint256(int256(poolBalance0) + amount0Delta), "incorrect pool token0 balance");
+        assertEq(token1.balanceOf(address(pool)), uint256(int256(poolBalance1) + amount1Delta), "incorrect pool token1 balance");
+
+        // Slot0 change
+        (uint160 sqrtPriceX96, int24 tick) = pool.slot0();
+        assertEq(sqrtPriceX96, 5604469350942327889444743441197, "incorrect sqrtPriceX96");
+        assertEq(tick, 85184, "incorrect tick");
+        assertEq(pool.liquidity(), 1517882343751509868544, "incorrect pool liquidity");
+    }
+
+
+    function testSwapInsufficientInputAmount() public {
+        TestCaseParams memory params = TestCaseParams({
+            wethBalance: 1 ether,
+            usdcBalance: 5000 ether,
+            currentTick: 85176,
+            lowerTick: 84222,
+            upperTick: 86129,
+            liquidity: 1517882343751509868544,
+            currentSqrtP: 5602277097478614198912276234240,
+            transferInMintCallback: true,
+            transferInSwapCallback: false,
+            mintLiquidity: true
+        });
+        setupTestCase(params);
+        vm.expectRevert(encodeError("InsufficientInputAmount()"));
+        pool.swap(address(this), "");
+    }
+
+
+    function uniswapV3SwapCallback(int256 amount0, int256 amount1,bytes calldata data) public {
+        if (transferInSwapCallback) {
+            UniswapV3Pool.CallbackData memory extra = abi.decode(data, (UniswapV3Pool.CallbackData));
+            if(amount0 >0 ){
+                IERC20(extra.token0).transferFrom(extra.payer, msg.sender, uint256(amount0));
+            }
+            if(amount1 >0 ){
+                IERC20(extra.token1).transferFrom(extra.payer, msg.sender, uint256(amount1));
+            }
+        }
     }
 
     function uniswapV3MintCallback(uint256 amount0, uint256 amount1, bytes calldata data) public {

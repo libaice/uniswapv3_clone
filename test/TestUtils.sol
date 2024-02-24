@@ -9,13 +9,6 @@ abstract contract TestUtils {
     }
 
     function encodeExtra(address token0_, address token1_, address payer) internal pure returns (bytes memory) {
-       return abi.encode(
-        UniswapV3Pool.CallbackData({
-            token0: token0_,
-            token1: token1_,
-            payer: payer
-        })
-       );
-       
+        return abi.encode(UniswapV3Pool.CallbackData({token0: token0_, token1: token1_, payer: payer}));
     }
 }
