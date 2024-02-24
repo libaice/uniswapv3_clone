@@ -116,9 +116,7 @@ contract UniswapV3Pool {
         uint256 balance1Before = balance1();
         IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(int256(amount0), int256(amount1), data);
         if (balance1Before + uint256(amount1) > balance1()) revert InsufficientInputAmount();
-        emit Swap(
-            msg.sender, recepient, amount0, amount1, slot0.sqrtPriceX96, int128(liquidity), slot0.tick
-        );
+        emit Swap(msg.sender, recepient, amount0, amount1, slot0.sqrtPriceX96, int128(liquidity), slot0.tick);
     }
 
     function balance0() internal returns (uint256 balance) {

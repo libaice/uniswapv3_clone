@@ -80,3 +80,27 @@ print(amount0)
 
 print(amount1)
 # 5000 000000000000000000
+
+# -------------------
+amount_in = 0.01337 * eth
+print(f"\nSelling {amount_in/eth} ETH")
+
+price_next =  int(liq * q96 * sqrtp_cur) //  (liq * q96 + amount_in * sqrtp_cur );
+print("New price:", (price_next / q96) ** 2)
+print("New sqrtP:", price_next)
+print("new tick ", price_to_tick( (price_next / q96) ** 2))
+
+amount_in = calc_amount0(liq, price_next, sqrtp_cur)
+print("ETH amount_in", amount_in / eth)
+
+amount_out = calc_amount1(liq, price_next, sqrtp_cur)
+print("USDC amount_out", amount_out / eth)
+
+
+#  --------------------
+print("----------------calculate Tick Math")
+tick = 85176 
+word_pos = tick >> 8
+bit_pos = tick % 256
+print(f"Word {word_pos}, bit {bit_pos}")
+# Word 332, bit 184

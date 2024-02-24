@@ -140,12 +140,22 @@ contract UniswapV3PoolTest is Test, TestUtils {
         assertEq(amount1Delta, 42 ether, "invalid USDC in");
 
         // user balance change
-        assertEq(token0.balanceOf(address(this)), uint256(userBalance0Before - amount0Delta), "incorrect user token0 balance");
+        assertEq(
+            token0.balanceOf(address(this)), uint256(userBalance0Before - amount0Delta), "incorrect user token0 balance"
+        );
         assertEq(token1.balanceOf(address(this)), 0, "incorrect user token1 balance");
 
         // pool balance change
-        assertEq(token0.balanceOf(address(pool)), uint256(int256(poolBalance0) + amount0Delta), "incorrect pool token0 balance");
-        assertEq(token1.balanceOf(address(pool)), uint256(int256(poolBalance1) + amount1Delta), "incorrect pool token1 balance");
+        assertEq(
+            token0.balanceOf(address(pool)),
+            uint256(int256(poolBalance0) + amount0Delta),
+            "incorrect pool token0 balance"
+        );
+        assertEq(
+            token1.balanceOf(address(pool)),
+            uint256(int256(poolBalance1) + amount1Delta),
+            "incorrect pool token1 balance"
+        );
 
         // Slot0 change
         (uint160 sqrtPriceX96, int24 tick) = pool.slot0();
@@ -153,7 +163,6 @@ contract UniswapV3PoolTest is Test, TestUtils {
         assertEq(tick, 85184, "incorrect tick");
         assertEq(pool.liquidity(), 1517882343751509868544, "incorrect pool liquidity");
     }
-
 
     function testSwapInsufficientInputAmount() public {
         TestCaseParams memory params = TestCaseParams({
@@ -173,14 +182,13 @@ contract UniswapV3PoolTest is Test, TestUtils {
         pool.swap(address(this), "");
     }
 
-
-    function uniswapV3SwapCallback(int256 amount0, int256 amount1,bytes calldata data) public {
+    function uniswapV3SwapCallback(int256 amount0, int256 amount1, bytes calldata data) public {
         if (transferInSwapCallback) {
             UniswapV3Pool.CallbackData memory extra = abi.decode(data, (UniswapV3Pool.CallbackData));
-            if(amount0 >0 ){
+            if (amount0 > 0) {
                 IERC20(extra.token0).transferFrom(extra.payer, msg.sender, uint256(amount0));
             }
-            if(amount1 >0 ){
+            if (amount1 > 0) {
                 IERC20(extra.token1).transferFrom(extra.payer, msg.sender, uint256(amount1));
             }
         }
