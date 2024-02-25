@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.14;
+
 import {IUniswapV3Pool} from "./interfaces/IUniswapV3Pool.sol";
 
 contract UniswapV3Quoter {
@@ -9,17 +10,19 @@ contract UniswapV3Quoter {
         bool zeroForOne;
     }
 
-    function quote(QuoteParams memory params) public returns (uint256 amountOut, uint160 sqrtPriceX96After, int24 tickAfter) {
-        try 
-        IUniswapV3Pool(params.pool).swap(address(this), params.zeroForOne, params.amountIn, abi.encode(params.pool))
-        {}catch( bytes memory reason){
+    function quote(QuoteParams memory params)
+        public
+        returns (uint256 amountOut, uint160 sqrtPriceX96After, int24 tickAfter)
+    {
+        try IUniswapV3Pool(params.pool).swap(address(this), params.zeroForOne, params.amountIn, abi.encode(params.pool))
+        {} catch (bytes memory reason) {
             return abi.decode(reason, (uint256, uint160, int24));
         }
     }
 
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes memory data) external view {
         address pool = abi.decode(data, (address));
-        uint256 amountOut = amount0Delta > 0 ? uint(-amount0Delta) : uint(-amount1Delta);
+        uint256 amountOut = amount0Delta > 0 ? uint256(-amount0Delta) : uint256(-amount1Delta);
         (uint160 sqrtPriceX96After, int24 tickAfter) = IUniswapV3Pool(pool).slot0();
         assembly {
             let ptr := mload(0x40)

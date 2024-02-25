@@ -11,9 +11,9 @@ contract UniswapV3Manager {
         return UniswapV3Pool(poolAddress_).mint(msg.sender, lowerTick, upperTick, liquidity, data);
     }
 
-    function swap(address poolAddress_, bytes calldata data) public returns (int256, int256) {
-        return UniswapV3Pool(poolAddress_).swap(msg.sender, data);
-    }
+    // function swap(address poolAddress_, bytes calldata data) public returns (int256, int256) {
+    //     return UniswapV3Pool(poolAddress_).swap(msg.sender, data);
+    // }
 
     function uniswapMintCallback(uint256 amount0, uint256 amount1, bytes calldata data) public {
         UniswapV3Pool.CallbackData memory extra = abi.decode(data, (UniswapV3Pool.CallbackData));

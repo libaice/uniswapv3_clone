@@ -104,3 +104,12 @@ word_pos = tick >> 8
 bit_pos = tick % 256
 print(f"Word {word_pos}, bit {bit_pos}")
 # Word 332, bit 184
+
+mask = 2**bit_pos
+print(format(mask, '#0258b'))
+
+word = (2 ** 256) -1
+print(format(word, '#0258b'))
+
+word = 0
+print(format(word^ mask, '#0258b'))
