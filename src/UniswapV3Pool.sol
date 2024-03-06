@@ -101,8 +101,9 @@ contract UniswapV3Pool {
             revert("UniswapV3Pool: INVALID_TICK_RANGE");
         }
         if (amount == 0) revert ZeroLiquidity();
-        bool flippedLower = ticks.update(lowerTick, amount);
-        bool flippedUpper = ticks.update(upperTick, amount);
+
+        bool flippedLower = ticks.update(lowerTick, int128(amount), false);
+        bool flippedUpper = ticks.update(upperTick, int128(amount), true);
 
         if (flippedLower) {
             tickBitmap.flipTick(lowerTick, 1);
