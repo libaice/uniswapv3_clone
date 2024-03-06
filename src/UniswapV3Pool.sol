@@ -5,6 +5,7 @@ import {Position} from "src/lib/Position.sol";
 import {IERC20} from "src/interfaces/IERC20.sol";
 import {IUniswapV3MintCallback} from "src/interfaces/IUniswapV3MintCallback.sol";
 import {IUniswapV3SwapCallback} from "src/interfaces/IUniswapV3SwapCallback.sol";
+import {IUniswapV3FlashCallback} from "src/interfaces/IUniswapV3FlashCallback.sol";
 import {TickBitmap} from "src/lib/TickBitmap.sol";
 import {Math} from "src/lib/Math.sol";
 import {TickMath} from "src/lib/TickMath.sol";
@@ -188,6 +189,19 @@ contract UniswapV3Pool {
         // IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(int256(amount0), int256(amount1), data);
         // if (balance1Before + uint256(amount1) > balance1()) revert InsufficientInputAmount();
         emit Swap(msg.sender, recepient, amount0, amount1, slot0.sqrtPriceX96, int128(liquidity), slot0.tick);
+    }
+
+    function flash(uint256 amount0, uint256 amount1, bytes calldata data) external {
+        uint256 balance0Before = IERC20(token0).balanceOf(address(this));
+        uint256 balance1Before = IERC20(token1).balanceOf(address(this));
+
+        if (amount0 > 0) IERC20(token0).transfer(msg.sender, amount0);
+        if (amount1 > 0) IERC20(token1).transfer(msg.sender, amount1);
+
+        IUniswapV3MintCallback(msg.sender).uniswapV3MintCallback(data);
+        require(IERC20(token0).balanceOf(address(this)) >= balance0Before, "UniswapV3Pool: INSUFFICIENT_AMOUNT0");
+        require(IERC20(token1).balanceOf(address(this)) >= balance1Before, "UniswapV3Pool: INSUFFICIENT_AMOUNT1");
+        emit Flash(msg.sender, amount0, amount1);
     }
 
     function balance0() internal returns (uint256 balance) {
