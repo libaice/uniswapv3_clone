@@ -48,21 +48,11 @@ contract UniswapV3Pool {
     address public immutable token1;
 
     struct Slot0 {
+        // current sqrt(P)
         uint160 sqrtPriceX96;
+        // current tick
         int24 tick;
     }
-
-    Slot0 public slot0;
-
-    // Amount of Liquidity
-    uint128 public liquidity;
-
-    //Tick Info
-    mapping(int24 => Tick.Info) public ticks;
-    // TickBitMap Info
-    mapping(int16 => uint256) public tickBitmap;
-    //Position Info
-    mapping(bytes32 => Position.Info) public positions;
 
     struct CallbackData {
         address token0;
@@ -84,6 +74,18 @@ contract UniswapV3Pool {
         uint256 amountIn;
         uint256 amountOut;
     }
+
+    Slot0 public slot0;
+
+    // Amount of Liquidity
+    uint128 public liquidity;
+
+    //Tick Info
+    mapping(int24 => Tick.Info) public ticks;
+    // TickBitMap Info
+    mapping(int16 => uint256) public tickBitmap;
+    //Position Info
+    mapping(bytes32 => Position.Info) public positions;
 
     constructor(address _token0, address _token1, uint160 _sqrtPriceX96, int24 _tick) {
         token0 = _token0;
@@ -166,17 +168,16 @@ contract UniswapV3Pool {
             ? (int256(amountSpecified - state.amountSpecifiedRemaining), -int256(state.amountCalculated))
             : (-int256(state.amountCalculated), int256(amountSpecified - state.amountSpecifiedRemaining));
 
-
-        if(zeroForOne){
+        if (zeroForOne) {
             IERC20(token1).transfer(recepient, uint256(-amount1));
             uint256 balance0Before = balance0();
             IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(amount0, amount1, data);
-            if(balance0Before + uint256(amount0) > balance0()) revert InsufficientInputAmount();
-        }else{
+            if (balance0Before + uint256(amount0) > balance0()) revert InsufficientInputAmount();
+        } else {
             IERC20(token0).transfer(recepient, uint256(-amount0));
             uint256 balance1Before = balance1();
             IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(amount0, amount1, data);
-            if(balance1Before + uint256(amount1) > balance1()) revert InsufficientInputAmount();
+            if (balance1Before + uint256(amount1) > balance1()) revert InsufficientInputAmount();
         }
 
         // IERC20(token0).transfer(recepient, uint256(-amount0));

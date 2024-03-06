@@ -141,7 +141,7 @@ contract UniswapV3ManagerTest is Test, TestUtils {
 
         int256 userBalance0Before = int256(token0.balanceOf(address(this)));
 
-        (int256 amount0Delta, int256 amount1Delta) = manager.swap(address(pool), extra);
+        (int256 amount0Delta, int256 amount1Delta) = manager.swap(address(pool), false, swapAmount, extra);
 
         assertEq(amount0Delta, -0.008396714242162444 ether, "invalid ETH out");
         assertEq(amount1Delta, 42 ether, "invalid USDC in");
@@ -182,7 +182,7 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         bytes memory extra = encodeExtra(address(token0), address(token1), address(this));
 
         vm.expectRevert(stdError.arithmeticError);
-        manager.swap(address(pool), extra);
+        manager.swap(address(pool), false, 42 ether, extra);
     }
 
     ////////////////////////////////////////////////////////////////////////////

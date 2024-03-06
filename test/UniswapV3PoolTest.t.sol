@@ -129,12 +129,11 @@ contract UniswapV3PoolTest is Test, TestUtils {
         token1.mint(address(this), swapAmount);
         token1.approve(address(this), swapAmount);
 
-        UniswapV3Pool.CallbackData memory extra =
-            UniswapV3Pool.CallbackData({token0: address(token0), token1: address(token1), payer: address(this)});
-
+        bytes memory extra = encodeExtra(address(token0), address(token1), address(this));
         int256 userBalance0Before = int256(token0.balanceOf(address(this)));
+        int256 userBalance1Before = int256(token1.balanceOf(address(this)));
 
-        (int256 amount0Delta, int256 amount1Delta) = pool.swap(address(this), abi.encode(extra));
+        (int256 amount0Delta, int256 amount1Delta) = pool.swap(address(this), false, swapAmount, extra);
 
         assertEq(amount0Delta, -0.008396714242162444 ether, "invalid ETH out");
         assertEq(amount1Delta, 42 ether, "invalid USDC in");
@@ -179,7 +178,7 @@ contract UniswapV3PoolTest is Test, TestUtils {
         });
         setupTestCase(params);
         vm.expectRevert(encodeError("InsufficientInputAmount()"));
-        pool.swap(address(this), "");
+        pool.swap(address(this), false, 42 ether, "");
     }
 
     function uniswapV3SwapCallback(int256 amount0, int256 amount1, bytes calldata data) public {
