@@ -40,6 +40,8 @@ contract UniswapV3Pool {
         int24 tick
     );
 
+    event Flash(address indexed recipient, uint256 amount0, uint256 amount1);
+
     int24 internal constant MIN_TICK = -887272;
     int24 internal constant MAX_TICK = -MIN_TICK;
 
