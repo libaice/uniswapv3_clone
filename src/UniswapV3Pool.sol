@@ -94,12 +94,6 @@ contract UniswapV3Pool is IUniswapV3Pool {
     //Position Info
     mapping(bytes32 => Position.Info) public positions;
 
-    // constructor(address _token0, address _token1, uint160 _sqrtPriceX96, int24 _tick) {
-    //     token0 = _token0;
-    //     token1 = _token1;
-    //     slot0 = Slot0({sqrtPriceX96: _sqrtPriceX96, tick: _tick});
-    // }
-
     constructor() {
         (factory, token0, token1, tickSpacing) = IUniswapV3PoolDeployer(msg.sender).parameters();
     }
@@ -146,10 +140,13 @@ contract UniswapV3Pool is IUniswapV3Pool {
         emit Mint(msg.sender, owner, lowerTick, upperTick, amount, amount0, amount1);
     }
 
-    function swap(address recepient, bool zeroForOne, uint256 amountSpecified, bytes calldata data)
-        public
-        returns (int256 amount0, int256 amount1)
-    {
+    function swap(
+        address recepient,
+        bool zeroForOne,
+        uint256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes calldata data
+    ) public returns (int256 amount0, int256 amount1) {
         Slot0 memory slot0_ = slot0;
         SwapState memory state = SwapState({
             amountSpecifiedRemaining: amountSpecified,
