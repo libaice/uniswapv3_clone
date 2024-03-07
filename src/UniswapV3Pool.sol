@@ -1,7 +1,7 @@
 pragma solidity ^0.8.14;
 
 import {IUniswapV3Pool} from "src/interfaces/IUniswapV3Pool.sol";
-
+import {IUniswapV3PoolDeployer} from "src/interfaces/IUniswapV3PoolDeployer.sol";
 import {Tick} from "src/lib/Tick.sol";
 import {Position} from "src/lib/Position.sol";
 import {IERC20} from "src/interfaces/IERC20.sol";
@@ -48,9 +48,11 @@ contract UniswapV3Pool is IUniswapV3Pool {
     int24 internal constant MIN_TICK = -887272;
     int24 internal constant MAX_TICK = -MIN_TICK;
 
-    // Pool Token
+    // Pool Parameters
+    address public immutable factory;
     address public immutable token0;
     address public immutable token1;
+    uint24 public immutable tickSpacing;
 
     struct Slot0 {
         // current sqrt(P)
@@ -92,10 +94,14 @@ contract UniswapV3Pool is IUniswapV3Pool {
     //Position Info
     mapping(bytes32 => Position.Info) public positions;
 
-    constructor(address _token0, address _token1, uint160 _sqrtPriceX96, int24 _tick) {
-        token0 = _token0;
-        token1 = _token1;
-        slot0 = Slot0({sqrtPriceX96: _sqrtPriceX96, tick: _tick});
+    // constructor(address _token0, address _token1, uint160 _sqrtPriceX96, int24 _tick) {
+    //     token0 = _token0;
+    //     token1 = _token1;
+    //     slot0 = Slot0({sqrtPriceX96: _sqrtPriceX96, tick: _tick});
+    // }
+
+    constructor() {
+        (factory, token0, token1, tickSpacing) = IUniswapV3PoolDeployer(msg.sender).parameters();
     }
 
     function mint(address owner, int24 lowerTick, int24 upperTick, uint128 amount, bytes calldata data)
