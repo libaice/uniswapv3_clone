@@ -1,14 +1,41 @@
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.14;
+
+import "prb-math/PRBMath.sol";
+
+import "./FixedPoint128.sol";
+import "./LiquidityMath.sol";
 
 library Position {
     struct Info {
         uint128 liquidity;
+        uint256 feeGrowthInside0LastX128;
+        uint256 feeGrowthInside1LastX128;
+        uint128 tokensOwed0;
+        uint128 tokensOwed1;
     }
 
-    function update(Info storage self, uint128 liquidityDelta) internal {
-        uint128 liquidityBefore = self.liquidity;
-        uint128 liquidityAfter = liquidityBefore + liquidityDelta;
-        self.liquidity = liquidityAfter;
+    function update(
+        Info storage self,
+        int128 liquidityDelta,
+        uint256 feeGrowthInside0X128,
+        uint256 feeGrowthInside1X128
+    ) internal {
+        uint128 tokems0Owned = uint128(
+            PRBMath.mulDiv(feeGrowthInside0X128 - self.feeGrowthInside0LastX128, self.liquidity, FixedPoint128.Q128)
+        );
+        uint128 tokems1Owned = uint128(
+            PRBMath.mulDiv(feeGrowthInside1X128 - self.feeGrowthInside1LastX128, self.liquidity, FixedPoint128.Q128)
+        );
+
+        self.liquidity = LiquidityMath.addLiquidity(self.liquidity, liquidityDelta);
+        self.feeGrowthInside0LastX128 = feeGrowthInside0X128;
+        self.feeGrowthInside1LastX128 = feeGrowthInside1X128;
+
+        if (tokems0Owned > 0 || tokems1Owned > 0) {
+            self.tokensOwed0 += tokems0Owned;
+            self.tokensOwed1 += tokems1Owned;
+        }
     }
 
     function get(mapping(bytes32 => Info) storage self, address owner, int24 lowerTick, int24 upperTick)

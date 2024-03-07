@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.14;
 
 import "./LiquidityMath.sol";
@@ -49,7 +50,7 @@ library Tick {
         int24 tick,
         uint256 feeGrowthGlobal0X128,
         uint256 feeGrowthGlobal1X128
-    ) internal  returns (int128 liquidityDelta) {
+    ) internal returns (int128 liquidityDelta) {
         Tick.Info storage info = self[tick];
         info.feeGrowthOutside0X128 = feeGrowthGlobal0X128 - info.feeGrowthOutside0X128;
         info.feeGrowthOutside1X128 = feeGrowthGlobal1X128 - info.feeGrowthOutside1X128;
@@ -91,6 +92,5 @@ library Tick {
 
         feeGrowthInside0X128 = feeGrowthGlobal0X128 - feeGrowthBelow0X128 - feeGrowthAbove0X128;
         feeGrowthInside1X128 = feeGrowthGlobal1X128 - feeGrowthBelow1X128 - feeGrowthAbove1X128;
-
     }
 }

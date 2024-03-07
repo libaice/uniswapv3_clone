@@ -163,7 +163,7 @@ contract UniswapV3Pool is IUniswapV3Pool {
 
     function _modifyPosition(ModifyPositionParams memory params)
         internal
-        returns (Position.Info memory position, int256 amount0, int256 amount1)
+        returns (Position.Info storage position, int256 amount0, int256 amount1)
     {
         // 1. 使用缓存来减少SLOAD， 优化gas
         Slot0 memory slot0_ = slot0;
@@ -197,6 +197,20 @@ contract UniswapV3Pool is IUniswapV3Pool {
         }
         if (flippedUpper) {
             tickBitmap.flipTick(params.upperTick, 1);
+        }
+        (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = ticks.getFeeGrowthInside(
+            params.lowerTick, params.upperTick, slot0_.tick, feeGrowthGlobal0X128_, feeGrowthGlobal1X128_
+        );
+
+        position.update(params.liquidityDelta, feeGrowthInside0X128, feeGrowthInside1X128);
+
+        // 5. 分阶段进行流动性的添加
+        if (slot0_.tick < params.lowerTick) {
+            amount0 = Math.calcAmount0Delta(TickMath.getSqrtRatioAtTick(params.lowerTick), TickMath.getSqrtRatioAtTick(params.upperTick), params.liquidityDelta);
+        } else if (slot0_.tick < params.upperTick) {
+
+        } else {
+
         }
     }
 
