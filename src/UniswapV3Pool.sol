@@ -161,8 +161,11 @@ contract UniswapV3Pool is IUniswapV3Pool {
         int128 liquidityDelta;
     }
 
-    function _modifyPosition(ModifyPositionParams memory params)internal returns(Position.Info memory position, int256 amount0, int256 amount1){
-        // 1. 使用缓存来减少SLOAD， 优化gas 
+    function _modifyPosition(ModifyPositionParams memory params)
+        internal
+        returns (Position.Info memory position, int256 amount0, int256 amount1)
+    {
+        // 1. 使用缓存来减少SLOAD， 优化gas
         Slot0 memory slot0_ = slot0;
         uint256 feeGrowthGlobal0X128_ = feeGrowthGlobal0X128;
         uint256 feeGrowthGlobal1X128_ = feeGrowthGlobal1X128;
@@ -171,8 +174,22 @@ contract UniswapV3Pool is IUniswapV3Pool {
         position = positions.get(params.owner, params.lowerTick, params.upperTick);
 
         // 3. 计算是否需要更新仓位
-        bool flippedLower = ticks.update(params.lowerTick, slot0_.tick, int128(params.liquidityDelta), feeGrowthGlobal0X128_, feeGrowthGlobal1X128_, false);
-        bool flippedUpper = ticks.update(params.upperTick, slot0_.tick, int128(params.liquidityDelta), feeGrowthGlobal0X128_, feeGrowthGlobal1X128_, true);
+        bool flippedLower = ticks.update(
+            params.lowerTick,
+            slot0_.tick,
+            int128(params.liquidityDelta),
+            feeGrowthGlobal0X128_,
+            feeGrowthGlobal1X128_,
+            false
+        );
+        bool flippedUpper = ticks.update(
+            params.upperTick,
+            slot0_.tick,
+            int128(params.liquidityDelta),
+            feeGrowthGlobal0X128_,
+            feeGrowthGlobal1X128_,
+            true
+        );
 
         // 4. 如果需要切换方向， 更换方向
         if (flippedLower) {
@@ -181,15 +198,12 @@ contract UniswapV3Pool is IUniswapV3Pool {
         if (flippedUpper) {
             tickBitmap.flipTick(params.upperTick, 1);
         }
-
-        
     }
-
 
     function mint(address owner, int24 lowerTick, int24 upperTick, uint128 amount, bytes calldata data)
         external
         returns (uint256 amount0, uint256 amount1)
-    {   
+    {
         // 1.两个tick 在区间内
         if (lowerTick < MIN_TICK || upperTick > MAX_TICK || lowerTick >= upperTick) {
             revert("UniswapV3Pool: INVALID_TICK_RANGE");
@@ -197,12 +211,14 @@ contract UniswapV3Pool is IUniswapV3Pool {
         if (amount == 0) revert ZeroLiquidity();
 
         // 2. 更新仓位
-        (, int256 amount0Int, int256 amount1Int) = _modifyPosition(ModifyPositionParams({
-            owner: owner,
-            lowerTick: lowerTick,
-            upperTick: upperTick,
-            liquidityDelta: int128(amount)
-        }));
+        (, int256 amount0Int, int256 amount1Int) = _modifyPosition(
+            ModifyPositionParams({
+                owner: owner,
+                lowerTick: lowerTick,
+                upperTick: upperTick,
+                liquidityDelta: int128(amount)
+            })
+        );
 
         amount0 = uint256(amount0Int);
         amount1 = uint256(amount1Int);
