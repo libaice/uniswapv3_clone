@@ -8,7 +8,14 @@ library Oracle {
         bool initialized;
     }
 
-    function initialize(Observation[65535] storage self, uint32 time) internal {}
+    function initialize(Observation[65535] storage self, uint32 time)
+        internal
+        returns (uint16 cardinality, uint16 cardinalityNext)
+    {
+        self[0] = Observation({timestamp: time, tickCumulative: 0, initialized: true});
+        cardinality = 1;
+        cardinalityNext = 1;
+    }
 
     function write(
         Observation[65535] storage self,
