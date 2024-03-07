@@ -10,7 +10,7 @@ library Tick {
         int128 liquidityNet;
     }
 
-    function update(mapping(int24 => Tick.Info) storage self, int24 tick, uint128 liquidityDelta, bool upper)
+    function update(mapping(int24 => Tick.Info) storage self, int24 tick, int128 liquidityDelta, bool upper)
         internal
         returns (bool flipped)
     {
@@ -32,7 +32,7 @@ library Tick {
     function cross(mapping(int24 => Tick.Info) storage self, int24 tick)
         internal
         view
-        returns (uint128 liquidityDelta)
+        returns (int128 liquidityDelta)
     {
         Tick.Info storage info = self[tick];
         liquidityDelta = info.liquidityNet;

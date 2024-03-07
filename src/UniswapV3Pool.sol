@@ -1,5 +1,7 @@
 pragma solidity ^0.8.14;
 
+import {IUniswapV3Pool} from "src/interfaces/IUniswapV3Pool.sol";
+
 import {Tick} from "src/lib/Tick.sol";
 import {Position} from "src/lib/Position.sol";
 import {IERC20} from "src/interfaces/IERC20.sol";
@@ -15,7 +17,7 @@ error ZeroLiquidity();
 error InsufficientInputAmount();
 error InvalidTickRange();
 
-contract UniswapV3Pool {
+contract UniswapV3Pool is IUniswapV3Pool {
     using Tick for mapping(int24 => Tick.Info);
     using TickBitmap for mapping(int16 => uint256);
     using Position for mapping(bytes32 => Position.Info);
@@ -198,7 +200,7 @@ contract UniswapV3Pool {
         if (amount0 > 0) IERC20(token0).transfer(msg.sender, amount0);
         if (amount1 > 0) IERC20(token1).transfer(msg.sender, amount1);
 
-        IUniswapV3MintCallback(msg.sender).uniswapV3MintCallback(data);
+        IUniswapV3FlashCallback(msg.sender).uniswapV3FlashCallback(data);
         require(IERC20(token0).balanceOf(address(this)) >= balance0Before, "UniswapV3Pool: INSUFFICIENT_AMOUNT0");
         require(IERC20(token1).balanceOf(address(this)) >= balance1Before, "UniswapV3Pool: INSUFFICIENT_AMOUNT1");
         emit Flash(msg.sender, amount0, amount1);
