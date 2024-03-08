@@ -206,12 +206,28 @@ contract UniswapV3Pool is IUniswapV3Pool {
 
         // 5. 分阶段进行流动性的添加
         if (slot0_.tick < params.lowerTick) {
-            amount0 = Math.calcAmount0Delta(
+            amount0 = int256(
+                Math.calcAmount0Delta(
+                    TickMath.getSqrtRatioAtTick(params.lowerTick),
+                    TickMath.getSqrtRatioAtTick(params.upperTick),
+                    params.liquidityDelta
+                )
+            );
+        } else if (slot0_.tick < params.upperTick) {
+            amount0 = int256(
+                Math.calcAmount0Delta(
+                    slot0_.sqrtPriceX96, TickMath.getSqrtRatioAtTick(params.upperTick), params.liquidityDelta
+                )
+            );
+            amount1 = Math.calcAmount1Delta(params.lowerTick, slot0_.sqrtPriceX96, params.liquidityDelta);
+            liquidity = LiquidityMath.addLiquidity(liquidity, params.liquidityDelta);
+        } else {
+            amount1 = Math.calcAmount1Delta(
                 TickMath.getSqrtRatioAtTick(params.lowerTick),
                 TickMath.getSqrtRatioAtTick(params.upperTick),
                 params.liquidityDelta
             );
-        } else if (slot0_.tick < params.upperTick) {} else {}
+        }
     }
 
     function mint(address owner, int24 lowerTick, int24 upperTick, uint128 amount, bytes calldata data)
@@ -236,25 +252,6 @@ contract UniswapV3Pool is IUniswapV3Pool {
 
         amount0 = uint256(amount0Int);
         amount1 = uint256(amount1Int);
-
-        bool flippedLower = ticks.update(lowerTick, int128(amount), false);
-        bool flippedUpper = ticks.update(upperTick, int128(amount), true);
-
-        if (flippedLower) {
-            tickBitmap.flipTick(lowerTick, 1);
-        }
-        if (flippedUpper) {
-            tickBitmap.flipTick(upperTick, 1);
-        }
-
-        Position.Info storage position = positions.get(owner, lowerTick, upperTick);
-        position.update(amount);
-
-        amount0 = Math.calcAmount0Delta(slot0.sqrtPriceX96, TickMath.getSqrtRatioAtTick(upperTick), amount);
-
-        amount1 = Math.calcAmount1Delta(slot0.sqrtPriceX96, TickMath.getSqrtRatioAtTick(lowerTick), amount);
-
-        liquidity += uint128(amount);
 
         uint256 balance0Before;
         uint256 balance1Before;
