@@ -274,53 +274,116 @@ contract UniswapV3Pool is IUniswapV3Pool {
         uint160 sqrtPriceLimitX96,
         bytes calldata data
     ) public returns (int256 amount0, int256 amount1) {
+        // 1. cache for gas saving
         Slot0 memory slot0_ = slot0;
-        SwapState memory state = SwapState({
-            amountSpecifiedRemaining: amountSpecified,
-            amountCalculated: 0,
-            sqrtPriceX96: slot0_.sqrtPriceX96,
-            tick: slot0_.tick
-        });
+        uint128 liquidity_ = liquidity;
 
-        while (state.amountSpecifiedRemaining > 0) {
-            StepState memory step;
-            step.sqrtPriceStartX96 = state.sqrtPriceX96;
-            (step.nextTick,) = tickBitmap.nextInitializedTickWithinOneWord(state.tick, 1, zeroForOne);
-            step.sqrtPriceNextX96 = TickMath.getSqrtRatioAtTick(step.nextTick);
+        // 2. 判断方向， 价格是否合法
+        if (
+            zeroForOne
+                ? sqrtPriceLimitX96 > slot0_.sqrtPriceX96 || sqrtPriceLimitX96 < TickMath.MIN_SQRT_RATIO
+                : sqrtPriceLimitX96 < slot0_.sqrtPriceX96 || sqrtPriceLimitX96 > TickMath.MAX_SQRT_RATIO
+        ) {
+            revert InvalidPriceLimit();
 
-            (state.sqrtPriceX96, step.amountIn, step.amountOut) = SwapMath.computeSwapStep(
-                step.sqrtPriceStartX96, step.sqrtPriceNextX96, liquidity, state.amountSpecifiedRemaining
-            );
-            state.amountSpecifiedRemaining -= step.amountIn;
-            state.amountCalculated += step.amountOut;
-            state.tick = TickMath.getTickAtSqrtRatio(step.sqrtPriceNextX96);
+            SwapState memory state = SwapState({
+                amountSpecifiedRemaining: amountSpecified,
+                amountCalculated: 0,
+                sqrtPriceX96: slot0_.sqrtPriceX96,
+                tick: slot0_.tick,
+                feeGrowthGlobalX128: zeroForOne ? feeGrowthGlobal0X128 : feeGrowthGlobal1X128,
+                liquidity: liquidity_
+            });
+
+            while (state.amountSpecifiedRemaining > 0 && state.sqrtPriceX96 != sqrtPriceLimitX96) {
+                StepState memory step;
+
+                step.sqrtPriceStartX96 = state.sqrtPriceX96;
+
+                (step.nextTick,) =
+                    tickBitmap.nextInitializedTickWithinOneWord(state.tick, int24(tickSpacing), zeroForOne);
+
+                step.sqrtPriceNextX96 = TickMath.getSqrtRatioAtTick(step.nextTick);
+
+                (state.sqrtPriceX96, step.amountIn, step.amountOut) = SwapMath.computeSwapStep(
+                    state.sqrtPriceX96,
+                    (zeroForOne ? step.sqrtPriceNextX96 < sqrtPriceLimitX96 : step.sqrtPriceNextX96 > sqrtPriceLimitX96)
+                        ? sqrtPriceLimitX96
+                        : step.sqrtPriceNextX96,
+                    state.liquidity,
+                    state.amountSpecifiedRemaining,
+                    fee
+                );
+                state.amountSpecifiedRemaining -= step.amountIn + step.feeAmount;
+                state.amountCalculated += step.amountOut;
+
+                if (state.liquidity > 0) {
+                    state.feeGrowthGlobalX128 += PRBMath.mulDiv(step.feeAmount, FixedPoint128.Q128, state.liquidity);
+                }
+
+                if (state.sqrtPriceX96 == step.sqrtPriceNextX96) {
+                    if (step.initialized) {
+                        int128 liquidityDelta = ticks.cross(
+                            step.nextTick,
+                            (zeroForOne ? state.feeGrowthGlobalX128 : feeGrowthGlobal0X128),
+                            (zeroForOne ? feeGrowthGlobal1X128 : state.feeGrowthGlobalX128)
+                        );
+
+                        if (zeroForOne) liquidityDelta = -liquidityDelta;
+
+                        state.liquidity = LiquidityMath.addLiquidity(state.liquidity, liquidityDelta);
+
+                        if (state.liquidity == 0) revert NotEnoughLiquidity();
+                    }
+
+                    state.tick = zeroForOne ? step.nextTick - 1 : step.nextTick;
+                } else if (state.sqrtPriceX96 != step.sqrtPriceStartX96) {
+                    state.tick = TickMath.getTickAtSqrtRatio(state.sqrtPriceX96);
+                }
+            }
+
+            if (state.tick != slot0_.tick) {
+                (uint16 observationIndex, uint16 observationCardinality) = observations.write(
+                    slot0_.observationIndex,
+                    _blockTimestamp(),
+                    slot0_.tick,
+                    slot0_.observationCardinality,
+                    slot0_.observationCardinalityNext
+                );
+
+                (slot0.sqrtPriceX96, slot0.tick, slot0.observationIndex, slot0.observationCardinality) =
+                    (state.sqrtPriceX96, state.tick, observationIndex, observationCardinality);
+            } else {
+                slot0.sqrtPriceX96 = state.sqrtPriceX96;
+            }
+
+            if (liquidity_ != state.liquidity) {
+                liquidity = state.liquidity;
+            }
+
+            if (zeroForOne) {
+                feeGrowthGlobal0X128 = state.feeGrowthGlobalX128;
+            } else {
+                feeGrowthGlobal1X128 = state.feeGrowthGlobalX128;
+            }
+
+            (amount0, amount1) = zeroForOne
+                ? (int256(amountSpecified - state.amountSpecifiedRemaining), -int256(state.amountCalculated))
+                : (-int256(state.amountCalculated), int256(amountSpecified - state.amountSpecifiedRemaining));
+
+            if (zeroForOne) {
+                IERC20(token1).transfer(recepient, uint256(-amount1));
+                uint256 balance0Before = balance0();
+                IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(amount0, amount1, data);
+                if (balance0Before + uint256(amount0) > balance0()) revert InsufficientInputAmount();
+            } else {
+                IERC20(token0).transfer(recepient, uint256(-amount0));
+                uint256 balance1Before = balance1();
+                IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(amount0, amount1, data);
+                if (balance1Before + uint256(amount1) > balance1()) revert InsufficientInputAmount();
+            }
+            emit Swap(msg.sender, recepient, amount0, amount1, slot0.sqrtPriceX96, int128(liquidity), slot0.tick);
         }
-
-        if (state.tick != slot0_.tick) {
-            (slot0.sqrtPriceX96, slot0.tick) = (state.sqrtPriceX96, state.tick);
-        }
-
-        (amount0, amount1) = zeroForOne
-            ? (int256(amountSpecified - state.amountSpecifiedRemaining), -int256(state.amountCalculated))
-            : (-int256(state.amountCalculated), int256(amountSpecified - state.amountSpecifiedRemaining));
-
-        if (zeroForOne) {
-            IERC20(token1).transfer(recepient, uint256(-amount1));
-            uint256 balance0Before = balance0();
-            IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(amount0, amount1, data);
-            if (balance0Before + uint256(amount0) > balance0()) revert InsufficientInputAmount();
-        } else {
-            IERC20(token0).transfer(recepient, uint256(-amount0));
-            uint256 balance1Before = balance1();
-            IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(amount0, amount1, data);
-            if (balance1Before + uint256(amount1) > balance1()) revert InsufficientInputAmount();
-        }
-
-        // IERC20(token0).transfer(recepient, uint256(-amount0));
-        // uint256 balance1Before = balance1();
-        // IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(int256(amount0), int256(amount1), data);
-        // if (balance1Before + uint256(amount1) > balance1()) revert InsufficientInputAmount();
-        emit Swap(msg.sender, recepient, amount0, amount1, slot0.sqrtPriceX96, int128(liquidity), slot0.tick);
     }
 
     function flash(uint256 amount0, uint256 amount1, bytes calldata data) external {
@@ -338,6 +401,22 @@ contract UniswapV3Pool is IUniswapV3Pool {
         if (IERC20(token1).balanceOf(address(this)) < balance1Before + fee1) revert FlashLoanNotPaid();
 
         emit Flash(msg.sender, amount0, amount1);
+    }
+
+    function observe(uint32[] calldata secondsAgos) public view returns (int56[] memory tickCumulatives) {
+        return observations.observe(
+            _blockTimestamp(), secondsAgos, slot0.tick, slot0.observationIndex, slot0.observationCardinality
+        );
+    }
+
+    function increaseObservationCardinalityNext(uint16 observationCardinalityNext) external {
+        uint16 observationCardinalityNextOld = slot0.observationCardinalityNext;
+        uint16 observationCardinalityNextNew =
+            observations.grow(observationCardinalityNextOld, observationCardinalityNext);
+        if (observationCardinalityNextNew != observationCardinalityNextOld) {
+            slot0.observationCardinalityNext = observationCardinalityNextNew;
+            emit IncreaseObservationCardinalityNext(observationCardinalityNextOld, observationCardinalityNextNew);
+        }
     }
 
     function balance0() internal returns (uint256 balance) {
