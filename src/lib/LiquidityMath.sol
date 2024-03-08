@@ -30,13 +30,13 @@ library LiquidityMath {
         liquidity = uint128(PRBMath.mulDiv(amount1, FixedPoint96.Q96, sqrtPriceBX96 - sqrtPriceAX96));
     }
 
-    function getLiquidityForAmouts(
+    function getLiquidityForAmounts(
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96,
         uint256 amount0,
         uint256 amount1
-    ) internal pure returns (uint128 liquidity) {
+    ) public pure returns (uint128 liquidity) {
         if (sqrtPriceAX96 > sqrtPriceBX96) {
             (sqrtPriceAX96, sqrtPriceBX96) = (sqrtPriceBX96, sqrtPriceAX96);
         }

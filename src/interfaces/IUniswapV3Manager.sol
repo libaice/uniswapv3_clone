@@ -12,7 +12,9 @@ interface IUniswapV3Manager {
     }
 
     struct MintParams {
-        address poolAddress;
+        address tokenA;
+        address tokenB;
+        uint24 fee;
         int24 lowerTick;
         int24 upperTick;
         uint256 amount0Desired;

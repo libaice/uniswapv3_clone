@@ -12,7 +12,7 @@ contract UniswapV3Quoter {
     struct QuoteSingleParams {
         address tokenIn;
         address tokenOut;
-        uint24 tickSpacing;
+        uint24 fee;
         uint256 amountIn;
         uint160 sqrtPriceLimitX96;
     }
@@ -32,12 +32,12 @@ contract UniswapV3Quoter {
 
         uint256 i = 0;
         while (true) {
-            (address tokenIn, uint24 tickSpacing, address tokenOut) = path.decodeFirstPool();
+            (address tokenIn, address tokenOut, uint24 fee) = path.decodeFirstPool();
             (uint256 amountOut_, uint160 sqrtPriceX96After, int24 tickAfter) = quoteSingle(
                 QuoteSingleParams({
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
-                    tickSpacing: tickSpacing,
+                    fee: fee,
                     amountIn: amountIn,
                     sqrtPriceLimitX96: 0
                 })
@@ -61,7 +61,7 @@ contract UniswapV3Quoter {
         public
         returns (uint256 amountOut, uint160 sqrtPriceX96After, int24 tickAfter)
     {
-        IUniswapV3Pool pool = getPool(params.tokenIn, params.tokenOut, params.tickSpacing);
+        IUniswapV3Pool pool = getPool(params.tokenIn, params.tokenOut, params.fee);
         bool zeroForOne = params.tokenIn < params.tokenOut;
         try pool.swap(
             address(this),
@@ -79,7 +79,7 @@ contract UniswapV3Quoter {
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes memory data) external view {
         address pool = abi.decode(data, (address));
         uint256 amountOut = amount0Delta > 0 ? uint256(-amount0Delta) : uint256(-amount1Delta);
-        (uint160 sqrtPriceX96After, int24 tickAfter) = IUniswapV3Pool(pool).slot0();
+        (uint160 sqrtPriceX96After, int24 tickAfter,,,) = IUniswapV3Pool(pool).slot0();
         assembly {
             let ptr := mload(0x40)
             mstore(ptr, amountOut)
