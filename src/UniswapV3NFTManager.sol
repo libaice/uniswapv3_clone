@@ -11,12 +11,12 @@ contract UniswapV3NFTManager is ERC721 {
     error WrongToken();
 
     address public immutable factory;
+
     constructor(address factoryAddress) ERC721("Uniswap V3 Positions", "UNIV3") {
         factory = factoryAddress;
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-       return "";
+        return "";
     }
-
 }

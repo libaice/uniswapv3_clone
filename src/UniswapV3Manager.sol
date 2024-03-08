@@ -1,6 +1,8 @@
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.14;
 
 import {UniswapV3Pool} from "src/UniswapV3Pool.sol";
+import {IUniswapV3Pool} from "src/interfaces/IUniswapV3Pool.sol";
 import {IERC20} from "src/interfaces/IERC20.sol";
 
 contract UniswapV3Manager {
@@ -11,6 +13,7 @@ contract UniswapV3Manager {
         return UniswapV3Pool(poolAddress_).mint(msg.sender, lowerTick, upperTick, liquidity, data);
     }
 
+    // multiple pool , think of swap path
     // function swap(address poolAddress_, bool zeroForOne, uint256 amountSpecified, bytes calldata data)
     //     public
     //     returns (int256, int256)
@@ -19,13 +22,13 @@ contract UniswapV3Manager {
     // }
 
     function uniswapMintCallback(uint256 amount0, uint256 amount1, bytes calldata data) public {
-        UniswapV3Pool.CallbackData memory extra = abi.decode(data, (UniswapV3Pool.CallbackData));
+        IUniswapV3Pool.CallbackData memory extra = abi.decode(data, (IUniswapV3Pool.CallbackData));
         IERC20(extra.token0).transferFrom(extra.payer, msg.sender, amount0);
         IERC20(extra.token1).transferFrom(extra.payer, msg.sender, amount1);
     }
 
     function uniswapV3SwapCallback(int256 amount0, int256 amount1, bytes calldata data) public {
-        UniswapV3Pool.CallbackData memory extra = abi.decode(data, (UniswapV3Pool.CallbackData));
+        IUniswapV3Pool.CallbackData memory extra = abi.decode(data, (IUniswapV3Pool.CallbackData));
         if (amount0 > 0) {
             IERC20(extra.token0).transferFrom(extra.payer, msg.sender, uint256(amount0));
         }
