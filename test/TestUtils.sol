@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.14;
-
+import {IUniswapV3Pool} from "src/interfaces/IUniswapV3Pool.sol";
 import {UniswapV3Pool} from "src/UniswapV3Pool.sol";
 
 abstract contract TestUtils {
@@ -9,7 +9,7 @@ abstract contract TestUtils {
     }
 
     function encodeExtra(address token0_, address token1_, address payer) internal pure returns (bytes memory) {
-        return abi.encode(UniswapV3Pool.CallbackData({token0: token0_, token1: token1_, payer: payer}));
+        return abi.encode(IUniswapV3Pool.CallbackData({token0: token0_, token1: token1_, payer: payer}));
     }
 
     function tickInBitMap(UniswapV3Pool pool, int24 tick) internal view returns (bool initialized) {

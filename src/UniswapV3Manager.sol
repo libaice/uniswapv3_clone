@@ -65,15 +65,58 @@ contract UniswapV3Manager is IUniswapV3Manager {
         }
     }
 
-    function swapSingle(SwapSingleParams calldata params) public returns (uint256 amountOut) {}
+    function swapSingle(SwapSingleParams calldata params) public returns (uint256 amountOut) {
+        amountOut = _swap(
+            params.amountIn,
+            msg.sender,
+            params.sqrtPriceLimitX96,
+            SwapCallbackData({path: abi.encodePacked(params.tokenIn, params.tokenOut, params.fee), payer: msg.sender})
+        );
+    }
 
-    function swap(SwapParams memory params) public returns (uint256 amountOut) {}
+    function swap(SwapParams memory params) public returns (uint256 amountOut) {
+        address payer = msg.sender;
+        bool hasMultiplePools;
+
+        while (true) {
+            hasMultiplePools = params.path.hasMultiplePools();
+            params.amountIn = _swap(
+                params.amountIn,
+                hasMultiplePools ? address(this) : params.recipient,
+                0,
+                SwapCallbackData({path: params.path.getFirstPool(), payer: payer})
+            );
+
+            if (hasMultiplePools) {
+                payer = address(this);
+                params.path = params.path.skipToken();
+            } else {
+                amountOut = params.amountIn;
+                break;
+            }
+        }
+        if (amountOut < params.minAmountOut) {
+            revert TooLittleReceived(amountOut);
+        }
+    }
 
     function _swap(uint256 amountIn, address recipient, uint160 sqrtPriceLimitX96, SwapCallbackData memory data)
         internal
         returns (uint256 amountOut)
     {
         (address tokenIn, address tokenOut, uint24 tickSpacing) = data.path.decodeFirstPool();
+        bool zeroForOne = tokenIn < tokenOut;
+
+        (int256 amount0, int256 amount1) = getPool(tokenIn, tokenOut, tickSpacing).swap(
+            recipient,
+            zeroForOne,
+            amountIn,
+            sqrtPriceLimitX96 == 0
+                ? (zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1)
+                : sqrtPriceLimitX96,
+            abi.encode(data)
+        );
+        amountOut = uint256(-(zeroForOne ? amount1 : amount0));
     }
 
     // multiple pool , think of swap path
