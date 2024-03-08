@@ -29,7 +29,7 @@ contract UniswapV3Pool is IUniswapV3Pool {
 
     error AlreadyInitialized();
     error FlashLoanNotPaid();
-    error InsufficientInputAmount();
+    error InsufficientInputAmount(); 
     error InvalidPriceLimit();
     error InvalidTickRange();
     error NotEnoughLiquidity();
@@ -219,7 +219,7 @@ contract UniswapV3Pool is IUniswapV3Pool {
                     slot0_.sqrtPriceX96, TickMath.getSqrtRatioAtTick(params.upperTick), params.liquidityDelta
                 )
             );
-            amount1 = Math.calcAmount1Delta(params.lowerTick, slot0_.sqrtPriceX96, params.liquidityDelta);
+            amount1 = Math.calcAmount1Delta(TickMath.getSqrtRatioAtTick(params.lowerTick), slot0_.sqrtPriceX96, params.liquidityDelta);
             liquidity = LiquidityMath.addLiquidity(liquidity, params.liquidityDelta);
         } else {
             amount1 = Math.calcAmount1Delta(

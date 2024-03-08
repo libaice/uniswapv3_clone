@@ -29,7 +29,7 @@ interface IUniswapV3Pool {
 
     function tickSpacing() external view returns (uint24);
 
-    function position(bytes32 key)
+    function positions(bytes32 key)
         external
         view
         returns (
